@@ -11,11 +11,13 @@ import {
  *
  * `recorded-ai.ts` owns the deterministic content fixtures. OpenMAIC asks the
  * provider a second time for playback actions. Returning an empty array there
- * triggers upstream language-specific defaults, so this adapter supplies a
- * minimal Italian speech action grounded exclusively in the same scene
- * outline/key points that were already derived from the approved Source Pack.
+ * triggers upstream language-specific defaults, so this adapter supplies one
+ * minimal `type: text` item in OpenMAIC's structured action-response format.
+ * The package parser converts that item into a normal DSL speech action.
  *
- * This is explicit test-provider behaviour, not a production output repair.
+ * The speech is grounded exclusively in the same scene outline/key points that
+ * were already derived from the approved Source Pack. This is explicit test-
+ * provider behaviour, not a production output repair.
  */
 export function createPrototype001GroundedRecordedAiHarness(): RecordedAiHarness {
   const base = createPrototype001RecordedAiHarness();
@@ -35,9 +37,8 @@ export function createPrototype001GroundedRecordedAiHarness(): RecordedAiHarness
 
     const groundedActionResponse = JSON.stringify([
       {
-        type: 'speech',
-        title: 'Guida Formalife',
-        text: (outline.keyPoints ?? []).join(' '),
+        type: 'text',
+        content: (outline.keyPoints ?? []).join(' '),
       },
     ]);
 

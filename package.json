@@ -10,7 +10,8 @@
   "packageManager": "pnpm@10.28.0",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prototype:001:recorded": "tsx scripts/prototype-001-recorded.ts"
   },
   "dependencies": {
     "@openmaic/dsl": "0.11.2",

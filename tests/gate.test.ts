@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { validateFormalifeEnvelope } from '../src/gate/validate-envelope.js';
 
-function validEnvelope() {
+function validEnvelope(): Record<string, any> {
   return {
     labSchemaVersion: 1,
     releaseScope: 'internal-only',
@@ -73,7 +73,7 @@ describe('validateFormalifeEnvelope', () => {
   });
 
   it('rejects anything that attempts to escape internal-only scope', () => {
-    const envelope = validEnvelope() as Record<string, unknown>;
+    const envelope = validEnvelope();
     envelope.releaseScope = 'public';
 
     const result = validateFormalifeEnvelope(envelope);

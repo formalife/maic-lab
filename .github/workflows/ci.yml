@@ -35,22 +35,22 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Generate Prototype 001 artifact
+      - name: Generate Prototype 001 grounded artifact
         run: pnpm prototype:001:recorded
 
-      - name: Build Prototype 001 renderer preview
+      - name: Build Prototype 002 immersive preview
         run: pnpm preview:build
 
-      - name: Upload Prototype 001 artifact
+      - name: Upload Prototype 001 grounded artifact
         uses: actions/upload-artifact@v4
         with:
           name: prototype-001-recorded
           path: artifacts/prototype-001-recorded.json
           if-no-files-found: error
 
-      - name: Upload Prototype 001 renderer preview
+      - name: Upload Prototype 002 immersive preview
         uses: actions/upload-artifact@v4
         with:
-          name: prototype-001-renderer-preview
+          name: prototype-002-immersive-preview
           path: preview/dist
           if-no-files-found: error

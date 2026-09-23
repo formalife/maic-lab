@@ -40,6 +40,14 @@ export function validateSourcePack(value: unknown): SourcePackValidationResult {
     });
   }
 
+  const contentClass = pack.contentClass;
+  if (contentClass !== 'general' && contentClass !== 'sensitive-clinical') {
+    issues.push({
+      path: '/contentClass',
+      message: 'contentClass must be general or sensitive-clinical',
+    });
+  }
+
   const sources = Array.isArray(pack.sources) ? pack.sources : null;
   const facts = Array.isArray(pack.facts) ? pack.facts : null;
 
@@ -76,10 +84,24 @@ export function validateSourcePack(value: unknown): SourcePackValidationResult {
         issues.push({ path: `/sources/${index}/label`, message: 'source label must be non-empty' });
       }
 
-      if (record.reviewStatus !== 'human-reviewed-for-lab') {
+      const reviewStatus = record.reviewStatus;
+      if (reviewStatus === 'hold-professional-review') {
         issues.push({
           path: `/sources/${index}/reviewStatus`,
-          message: 'source is not human-reviewed-for-lab; generation remains HOLD',
+          message: 'source remains HOLD / NEED PROFESSIONAL REVIEW; generation is blocked',
+        });
+      } else if (
+        reviewStatus !== 'human-reviewed-for-lab' &&
+        reviewStatus !== 'professionally-validated'
+      ) {
+        issues.push({
+          path: `/sources/${index}/reviewStatus`,
+          message: 'unknown source review status',
+        });
+      } else if (contentClass === 'sensitive-clinical' && reviewStatus !== 'professionally-validated') {
+        issues.push({
+          path: `/sources/${index}/reviewStatus`,
+          message: 'sensitive-clinical Source Packs require professionally-validated sources',
         });
       }
 
@@ -117,6 +139,13 @@ export function validateSourcePack(value: unknown): SourcePackValidationResult {
 
       if (!nonEmptyString(record.text)) {
         issues.push({ path: `/facts/${index}/text`, message: 'fact text must be non-empty' });
+      }
+
+      if (!nonEmptyString(record.locator)) {
+        issues.push({
+          path: `/facts/${index}/locator`,
+          message: 'each fact must include a public-safe source locator',
+        });
       }
 
       if (!Array.isArray(record.sourceIds) || record.sourceIds.length === 0) {

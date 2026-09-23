@@ -1,0 +1,25 @@
+{
+  "name": "@formalife/maic-lab",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Internal non-production Formalife laboratory for selective OpenMAIC experiments.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@openmaic/dsl": "0.11.2",
+    "@openmaic/generation": "0.3.11"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "4.1.8"
+  }
+}

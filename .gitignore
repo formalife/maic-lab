@@ -6,3 +6,5 @@ coverage/
 !.env.example
 .DS_Store
 *.log
+preview/dist/
+preview/src/prototype-001.generated.json

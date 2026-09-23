@@ -1,0 +1,84 @@
+name: OpenMAIC RAM-safe ARM64 image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'full-stock/UPSTREAM_PIN'
+      - 'full-stock/configure-ram-safe.sh'
+      - 'full-stock/start-ram-safe-prebuilt.sh'
+      - '.github/workflows/openmaic-ram-safe-arm64.yml'
+  pull_request:
+    paths:
+      - 'full-stock/UPSTREAM_PIN'
+      - 'full-stock/configure-ram-safe.sh'
+      - 'full-stock/start-ram-safe-prebuilt.sh'
+      - '.github/workflows/openmaic-ram-safe-arm64.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-arm64-runtime:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout MAIC Lab
+        uses: actions/checkout@v4
+
+      - name: Clone pinned OpenMAIC
+        shell: bash
+        run: |
+          set -euo pipefail
+          PIN="$(tr -d '[:space:]' < full-stock/UPSTREAM_PIN)"
+          git clone --filter=blob:none https://github.com/THU-MAIC/OpenMAIC.git upstream-openmaic
+          cd upstream-openmaic
+          git checkout --detach "$PIN"
+          test "$(git rev-parse HEAD)" = "$PIN"
+          echo "OPENMAIC_PIN=$PIN" >> "$GITHUB_ENV"
+
+      - name: Build stock ARM64 production image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build \
+            --build-arg NEXT_PUBLIC_PERSISTENCE=1 \
+            --build-arg NEXT_PUBLIC_PERSISTENCE_TOKEN=openmaic-local-dev \
+            --build-arg NEXT_PUBLIC_PRO_WORKBENCH_ENABLED=true \
+            --build-arg NEXT_PUBLIC_MAIC_EDITOR_ENABLED=true \
+            --build-arg NEXT_PUBLIC_PI_CHAT_ENABLED=true \
+            --build-arg NEXT_PUBLIC_COURSEWARE_REFERENCE_ENABLED=true \
+            --build-arg NEXT_PUBLIC_SHOW_VOCATIONAL_TEST_UI=true \
+            --build-arg NEXT_PUBLIC_ENABLE_PPTX_IMPORT=true \
+            --build-arg NEXT_PUBLIC_MAIC_PLAYBACK_RENDERER_ENABLED=false \
+            --build-arg NEXT_PUBLIC_MAIC_EDITOR_RENDERER_ENABLED=false \
+            --build-arg NEXT_PUBLIC_ENABLE_VIDEO_EXPORT=false \
+            -t "formalife-openmaic-ram-safe:${OPENMAIC_PIN}" \
+            upstream-openmaic
+
+      - name: Smoke-test image architecture and startup metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect formalife-openmaic-ram-safe:${OPENMAIC_PIN} --format '{{.Architecture}}')" = "arm64"
+          docker image inspect "formalife-openmaic-ram-safe:${OPENMAIC_PIN}" --format '{{.Config.Cmd}}'
+
+      - name: Export compressed Docker image
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ram-safe-artifact
+          docker save "formalife-openmaic-ram-safe:${OPENMAIC_PIN}" | gzip -1 > "ram-safe-artifact/openmaic-full-stock-${OPENMAIC_PIN}-linux-arm64.tar.gz"
+          printf '%s\n' "$OPENMAIC_PIN" > ram-safe-artifact/UPSTREAM_PIN
+          sha256sum ram-safe-artifact/openmaic-full-stock-*.tar.gz > ram-safe-artifact/SHA256SUMS
+          ls -lh ram-safe-artifact
+
+      - name: Upload RAM-safe runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmaic-full-stock-ram-safe-linux-arm64
+          path: ram-safe-artifact/
+          if-no-files-found: error
+          retention-days: 30

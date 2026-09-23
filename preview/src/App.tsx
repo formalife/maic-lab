@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { SlideCanvas, type Slide } from '@openmaic/renderer';
 
 import previewData from './prototype-001.generated.json';
-import { hardenInteractiveHtml } from './interactive-html.js';
 
 type SceneAction = {
   id: string;
@@ -85,13 +84,11 @@ function SlideScene({ content }: { content: SlideSceneContent }) {
 }
 
 function InteractiveScene({ content, title }: { content: InteractiveSceneContent; title: string }) {
-  const hardened = useMemo(() => hardenInteractiveHtml(content.html), [content.html]);
-
   return (
     <iframe
       className="interactive-frame"
       title={title}
-      srcDoc={hardened}
+      srcDoc={content.html}
       sandbox="allow-scripts"
       referrerPolicy="no-referrer"
     />

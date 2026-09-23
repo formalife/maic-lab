@@ -34,3 +34,13 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Generate Prototype 001 artifact
+        run: pnpm prototype:001:recorded
+
+      - name: Upload Prototype 001 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prototype-001-recorded
+          path: artifacts/prototype-001-recorded.json
+          if-no-files-found: error

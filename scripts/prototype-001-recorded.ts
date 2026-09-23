@@ -1,16 +1,16 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 
 import { generatePrototype001 } from '../src/prototypes/001/generate.js';
-import { createPrototype001RecordedAiHarness } from '../src/prototypes/001/recorded-ai.js';
+import { createPrototype001GroundedRecordedAiHarness } from '../src/prototypes/001/recorded-ai-grounded.js';
 
-const harness = createPrototype001RecordedAiHarness();
+const harness = createPrototype001GroundedRecordedAiHarness();
 const result = await generatePrototype001(harness.aiCall);
 
 const output = {
   generatedAt: new Date().toISOString(),
   providerMode: 'recorded-ai-response',
   note:
-    'Internal deterministic integration artifact. Responses were authored from the professionally validated Formalife Source Pack; this is not a customer-facing or professionally re-approved lesson.',
+    'Internal deterministic integration artifact. Content and playback-action responses are bounded by the professionally validated Formalife Source Pack; this is not a customer-facing or professionally re-approved lesson.',
   calls: harness.calls.map((call) => ({
     sceneId: call.sceneId,
     callIndex: call.callIndex,

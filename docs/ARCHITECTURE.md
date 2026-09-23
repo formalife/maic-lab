@@ -1,4 +1,4 @@
-# MAIC Lab architecture v0.3
+# MAIC Lab architecture v0.4
 
 ## Principle
 
@@ -41,11 +41,17 @@ CURRENT FORMALIFE SOURCE OF TRUTH
  internal renderer preview
             |
             v
- experiential comparison
- passive vs interactive
+ matched A/B evaluation
+ passive vs decision-training
             |
             v
- editor only if evidence justifies it
+ HUMAN LEARNING-VALUE DECISION
+            |
+     useful? yes / no
+        |          |
+        v          v
+ editor only      stop / redesign
+ if justified
 ```
 
 ## Component decisions
@@ -84,7 +90,7 @@ Implementation boundary:
 - no OpenMAIC fonts CSS is imported, so the preview has no `file.maic.chat` font dependency;
 - no authentication, learner account, persistence, production hosting or customer data is added.
 
-Result: the renderer build now passes in CI and produces a static internal artifact that contains all seven scenes, narration and provenance inspection.
+Result: the renderer build passes in CI and produces a static internal artifact that contains all seven scenes, narration and provenance inspection.
 
 ### 4. `@openmaic/editor` — STILL DEFERRED
 
@@ -92,7 +98,7 @@ Candidate role: internal authoring/revision surface.
 
 Current upstream package observed during lab setup: `0.0.9`.
 
-Reason for defer: do not build a Course Studio until a rendered learning experience proves useful enough to justify authoring infrastructure.
+Reason for defer: do not build a Course Studio until the matched A/B review shows enough learning value to justify authoring infrastructure.
 
 ### 5. Full OpenMAIC application — DO NOT ADOPT
 
@@ -154,7 +160,37 @@ Prototype 001 interactive HTML is hardened before it is bundled:
 
 This is a prototype-specific hardening rule, not a general claim that every future OpenMAIC widget is safe to render unchanged.
 
-### F. Professional/human review boundary
+### F. Matched passive baseline
+
+Version A is generated deterministically from the same Prototype 001 outline used by Version B.
+
+For every corresponding block it preserves:
+
+- order;
+- title;
+- approved key points;
+- exact `sourceFactIds`;
+- source locators.
+
+It deliberately removes quizzes, branching, interactive controls and feedback loops. This prevents the comparison from becoming two different curricula disguised as an A/B test.
+
+### G. Local evaluation surface
+
+The preview exposes Version A and Version B in the same navigation shell and adds an internal rating panel.
+
+Review dimensions:
+
+- clarity;
+- decision relevance;
+- mental work;
+- source fidelity;
+- controllability.
+
+Ratings are local page state. The browser does not submit them anywhere. A reviewer may manually export a JSON file containing ratings, descriptive `B − A` deltas and optional notes.
+
+No learner identity or customer data is required.
+
+### H. Professional/human review boundary
 
 Sensitive meaning is reviewed outside the AI's authority. The repository may record that review happened; it does not create professional approval by itself.
 
@@ -196,34 +232,51 @@ The Formalife envelope has its own schema version independent of OpenMAIC's DSL 
 
 1. OpenMAIC's content/action/build primitives work as a standalone package pipeline under the Formalife Source Pack boundary.
 2. Action prompts use a structured `type: text` / `type: action` response contract. Empty action output triggers upstream fallbacks that may not respect the requested language; the Formalife recorded-provider test therefore returns explicit grounded action text.
-3. OpenMAIC post-processing injects KaTeX CDN assets into interactive HTML even when Prototype 001 does not require mathematics. The preview now strips these at build time and adds a restrictive CSP before bundling.
+3. OpenMAIC post-processing injects KaTeX CDN assets into interactive HTML even when Prototype 001 does not require mathematics. The preview strips these at build time and adds a restrictive CSP before bundling.
 4. `@openmaic/renderer` works independently for the generated slide canvases without importing the full OpenMAIC app or its font CDN.
 5. A single internal preview can combine native OpenMAIC slide rendering with sandboxed interactive HTML and a local quiz renderer while preserving scene-level narration and fact provenance.
+6. A passive baseline can be derived from the same outline/source map and mechanically tested for fact-boundary parity, allowing the lab to compare learning format rather than source coverage.
 
-## Current verification checkpoint
+## Verified technical checkpoint
 
-The renderer-preview branch/PR must pass all of the following before merge:
+The renderer checkpoint is complete on `main` at merge commit `d765e2f548a9669a4881b32a57617e9791c0020f` with post-merge CI PASS.
 
-- dependency installation;
+The A/B branch additionally verifies:
+
+- 7 interactive scenes + 7 passive matched blocks;
+- exact fact-ID parity per corresponding block;
 - root + preview TypeScript checks;
 - all unit/integration/security tests;
 - Prototype 001 gated generation;
 - Vite production build;
 - static artifact upload;
-- artifact readback confirming all seven scene titles and provenance identifiers;
-- no `cdn.jsdelivr.net` or `file.maic.chat` URL in the final static artifact.
+- no `cdn.jsdelivr.net` or `file.maic.chat` dependency in the final static artifact.
 
-## Next technical checkpoint
+## Current evidence checkpoint
 
-Do **not** add the editor next.
+Technical integration is no longer the primary uncertainty.
 
-The next uncertainty is pedagogical rather than infrastructural: compare the same bounded material in a passive baseline versus the interactive Prototype 001 preview.
+The unresolved question is **learning value**.
 
-Minimum evidence to collect:
+The experiment now uses a predefined continuation heuristic:
 
-- can a tester correctly identify the changing decision cue after the scenario variable changes;
-- does the interactive version make the reason for the decision easier to explain than the passive baseline;
-- does the learner notice the need to reassess instead of perseverating on the first classification;
-- is the extra interaction useful enough to justify maintaining this content format.
+- B at least `+1` versus A on decision relevance;
+- B at least `+1` versus A on mental work;
+- no worse than `−1` on clarity, source fidelity or controllability;
+- qualitative evidence that at least one changing scenario cue forces genuine reassessment;
+- added interaction does not create disproportionate maintenance/correction burden.
 
-Only if that evidence is promising should the lab consider `@openmaic/editor`, live model variability, persistence or a broader content workflow.
+This heuristic is an internal decision aid, not a validated educational-effectiveness threshold.
+
+## Next checkpoint
+
+Run the human A/B review and export the evaluation JSON.
+
+Until that evidence exists:
+
+- do not add `@openmaic/editor`;
+- do not add live-model variability merely for novelty;
+- do not add persistence/auth/learner tracking;
+- do not promote Prototype 001 to a customer-facing product.
+
+If the continuation signal fails, stop or redesign the interaction. If it passes, the next experiment can test whether the editor meaningfully reduces correction/authoring cost.

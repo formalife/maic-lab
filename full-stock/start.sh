@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+LAB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PIN="$(tr -d '[:space:]' < "$LAB_ROOT/full-stock/UPSTREAM_PIN")"
 TARGET="${1:-$HOME/Downloads/OpenMAIC-full-stock}"
 
 if [[ ! -d "$TARGET/.git" ]]; then
@@ -15,6 +17,23 @@ fi
 
 cd "$TARGET"
 
+CURRENT_HEAD="$(git rev-parse HEAD)"
+if [[ "$CURRENT_HEAD" != "$PIN" ]]; then
+  cat >&2 <<EOF
+ERROR: il clone OpenMAIC non è sul pin approvato per questo esperimento.
+expected: $PIN
+actual:   $CURRENT_HEAD
+Riesegui full-stock/bootstrap.sh oppure riallinea esplicitamente il clone prima del test.
+EOF
+  exit 2
+fi
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "ERROR: il clone OpenMAIC contiene modifiche locali. Il baseline full-stock richiede sorgente upstream non modificato." >&2
+  git status --short >&2
+  exit 2
+fi
+
 if [[ ! -f .env.local ]]; then
   echo "ERROR: .env.local mancante. Esegui prima bootstrap.sh." >&2
   exit 1
@@ -25,8 +44,7 @@ fi
 if ! grep -Eq '^MODEL_ROUTES=.*maic-agent-driver' .env.local; then
   cat >&2 <<'EOF'
 ERROR: MODEL_ROUTES per maic-agent-driver non configurato in .env.local.
-Usa il formato documentato dall'upstream, per esempio con OpenAI:
-MODEL_ROUTES='{"maic-agent-driver":{"model":"openai:gpt-5.5","api":"openai-completions"}}'
+Per OpenAI usa full-stock/configure-openai.sh dal repository maic-lab.
 EOF
   exit 2
 fi
@@ -51,8 +69,9 @@ export NEXT_PUBLIC_MAIC_PLAYBACK_RENDERER_ENABLED=false
 export NEXT_PUBLIC_MAIC_EDITOR_RENDERER_ENABLED=false
 export NEXT_PUBLIC_ENABLE_VIDEO_EXPORT=false
 
-cat <<'EOF'
+cat <<EOF
 Starting OpenMAIC FULL-STOCK lab...
+- upstream pin: $PIN
 - app: http://localhost:3000
 - PostgreSQL: server-persistence profile
 - Pro Workbench: ON

@@ -55,6 +55,7 @@ if grep -Eq '^FORMALIFE_ZERO_COST_MODE=1$' .env.local; then
 fi
 
 CLOUD_KEY_RE='^(OPENAI|AZURE_OPENAI|ANTHROPIC|GOOGLE|DEEPSEEK|QWEN|KIMI|MINIMAX|GLM|SILICONFLOW|DOUBAO|OPENROUTER|GROK|TENCENT|TENCENT_HUNYUAN|XIAOMI|MIMO)_API_KEY=.+'
+LOCAL_MODEL=""
 
 if (( ZERO_COST_MODE == 1 )); then
   # Zero-cost means zero paid-provider escape hatches in this dedicated lab env.
@@ -113,6 +114,12 @@ export NEXT_PUBLIC_MAIC_PLAYBACK_RENDERER_ENABLED=false
 export NEXT_PUBLIC_MAIC_EDITOR_RENDERER_ENABLED=false
 export NEXT_PUBLIC_ENABLE_VIDEO_EXPORT=false
 
+DOCKER_MEM_BYTES="$(docker info --format '{{.MemTotal}}' 2>/dev/null || printf '0')"
+DOCKER_MEM_GIB="unknown"
+if [[ "$DOCKER_MEM_BYTES" =~ ^[0-9]+$ ]] && (( DOCKER_MEM_BYTES > 0 )); then
+  DOCKER_MEM_GIB="$(awk -v bytes="$DOCKER_MEM_BYTES" 'BEGIN { printf "%.1f", bytes / 1073741824 }')"
+fi
+
 if (( ZERO_COST_MODE == 1 )); then
   COST_LINE="- provider: Ollama locale / API cost: 0"
 else
@@ -125,6 +132,7 @@ Starting OpenMAIC FULL-STOCK lab...
 - app: http://localhost:3000
 - PostgreSQL: server-persistence profile
 $COST_LINE
+- Docker VM memory visible: ${DOCKER_MEM_GIB} GiB
 - Pro Workbench: ON
 - MAIC Editor: ON
 - Pi chat: ON
@@ -137,4 +145,27 @@ $COST_LINE
 Stop with Ctrl-C. Data remains in Docker volumes unless explicitly deleted.
 EOF
 
-docker compose --profile server-persistence up --build
+# Building OpenMAIC is substantially more memory hungry than serving it. The
+# zero-cost setup has just exercised the local model for its tool-calling check,
+# so Ollama may still have several GiB of model weights resident in unified RAM.
+# Release those weights before Docker/Next.js builds; Ollama will load the model
+# again automatically on the first live OpenMAIC request.
+if (( ZERO_COST_MODE == 1 )) && [[ -n "$LOCAL_MODEL" ]] && command -v ollama >/dev/null 2>&1; then
+  echo "Releasing Ollama model from RAM before Docker build: $LOCAL_MODEL"
+  ollama stop "$LOCAL_MODEL" >/dev/null 2>&1 || true
+  sleep 2
+fi
+
+if [[ "$DOCKER_MEM_BYTES" =~ ^[0-9]+$ ]] && (( DOCKER_MEM_BYTES > 0 && DOCKER_MEM_BYTES < 4294967296 )); then
+  cat >&2 <<EOF
+WARNING: Docker vede meno di 4 GiB di RAM (${DOCKER_MEM_GIB} GiB).
+La build Next.js di OpenMAIC può esaurire memoria. In Docker Desktop usa
+Settings > Resources > Advanced per aumentare Memory e, se necessario, Swap.
+EOF
+fi
+
+echo "Building stock OpenMAIC image first (Ollama model unloaded)..."
+docker compose build openmaic
+
+echo "Build complete. Starting OpenMAIC + PostgreSQL without rebuilding..."
+docker compose --profile server-persistence up

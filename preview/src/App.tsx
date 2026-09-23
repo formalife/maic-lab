@@ -295,7 +295,7 @@ function EvaluationPanel({ ratings, setRatings }: { ratings: RatingState; setRat
     anchor.href = url;
     anchor.download = 'formalife-maic-lab-prototype-001-evaluation.json';
     anchor.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   return (
@@ -315,7 +315,7 @@ function EvaluationPanel({ ratings, setRatings }: { ratings: RatingState; setRat
 
       <div className="evaluation-table" role="table" aria-label="Valutazione comparativa">
         <div className="evaluation-row evaluation-header" role="row">
-          <div>Critero</div>
+          <div>Criterio</div>
           <div>A · Passivo</div>
           <div>B · Interattivo</div>
           <div>Δ B−A</div>

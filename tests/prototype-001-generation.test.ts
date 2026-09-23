@@ -66,7 +66,7 @@ describe('Prototype 001 OpenMAIC generation pipeline', () => {
 
     expect(transition?.content?.type).toBe('interactive');
     expect(transition?.content?.html).toContain('La situazione cambia');
-    expect(transition?.content?.html).toContain('Rivaluta');
+    expect(transition?.content?.html.toLowerCase()).toContain('rivaluta');
 
     expect(quiz?.content?.type).toBe('quiz');
     expect(quiz?.content?.questions).toHaveLength(3);

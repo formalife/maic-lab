@@ -1,0 +1,13 @@
+{
+  "$comment": "Internal experiment constraints only. These enforce course shape, not clinical correctness.",
+  "sceneCount": { "min": 5, "max": 7 },
+  "allowedTypes": ["slide", "quiz", "interactive"],
+  "firstSceneType": "slide",
+  "typeMix": [
+    { "type": "interactive", "min": 2 },
+    { "type": "quiz", "min": 1 }
+  ],
+  "allowedWidgetTypes": ["simulation", "diagram", "game"],
+  "requiredWidgetOutlineFields": ["concept"],
+  "noConsecutiveSameWidgetType": true
+}

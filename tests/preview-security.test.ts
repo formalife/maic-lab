@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { hardenInteractiveHtml } from '../preview/src/interactive-html.js';
+import { hardenInteractiveHtml } from '../src/preview/harden-interactive-html.js';
 
 describe('Prototype 001 interactive preview hardening', () => {
   it('removes OpenMAIC KaTeX CDN assets and injects a restrictive CSP', () => {
@@ -32,5 +32,13 @@ describe('Prototype 001 interactive preview hardening', () => {
 
     expect(hardened).toContain('Content-Security-Policy');
     expect(hardened).toContain('<main>Scenario</main>');
+  });
+
+  it('is idempotent when preview data is hardened more than once', () => {
+    const once = hardenInteractiveHtml('<html><head></head><body>Scenario</body></html>');
+    const twice = hardenInteractiveHtml(once);
+
+    expect(twice).toBe(once);
+    expect(twice.match(/Content-Security-Policy/g)).toHaveLength(1);
   });
 });

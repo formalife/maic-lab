@@ -45,6 +45,7 @@ if ! curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; the
     brew services start ollama >/dev/null
   else
     echo "Avvio Ollama in background..."
+    mkdir -p "$HOME/.ollama"
     nohup ollama serve >"$HOME/.ollama/formalife-openmaic.log" 2>&1 &
   fi
 
@@ -97,9 +98,14 @@ TOOL_TEST_RESPONSE="$(curl -fsS --max-time 180 \
   -d "$TOOL_TEST_PAYLOAD" \
   http://127.0.0.1:11434/v1/chat/completions)"
 
-if [[ "$TOOL_TEST_RESPONSE" != *'tool_calls'* ]]; then
-  echo "ERROR: il modello risponde ma il test OpenAI-compatible tool calling non ha prodotto tool_calls." >&2
+if ! printf '%s' "$TOOL_TEST_RESPONSE" | grep -Eq '"tool_calls"[[:space:]]*:[[:space:]]*\[[[:space:]]*\{'; then
+  echo "ERROR: il modello risponde ma non ha emesso una tool call OpenAI-compatible non vuota." >&2
   echo "Scegli un modello Ollama con supporto tools e riesegui con OPENMAIC_LOCAL_MODEL=<model>." >&2
+  exit 3
+fi
+
+if ! printf '%s' "$TOOL_TEST_RESPONSE" | grep -Eq '"name"[[:space:]]*:[[:space:]]*"get_status"'; then
+  echo "ERROR: è presente una tool call, ma non verso la funzione richiesta get_status." >&2
   exit 3
 fi
 
@@ -107,6 +113,7 @@ fi
 # mode cannot accidentally fall back to a paid server provider. Values are not
 # preserved or copied elsewhere.
 TMP_ENV="$(mktemp)"
+trap 'rm -f "$TMP_ENV"' EXIT
 awk '
   /^(OPENAI|AZURE_OPENAI|ANTHROPIC|GOOGLE|DEEPSEEK|QWEN|KIMI|MINIMAX|GLM|SILICONFLOW|DOUBAO|OPENROUTER|GROK|TENCENT|TENCENT_HUNYUAN|XIAOMI|MIMO)_API_KEY=/ {
     split($0, a, "=");
@@ -137,6 +144,7 @@ ALLOW_LOCAL_NETWORKS=true
 EOF
 
 mv "$TMP_ENV" "$ENV_FILE"
+trap - EXIT
 chmod 600 "$ENV_FILE"
 
 cat <<EOF
@@ -144,7 +152,7 @@ cat <<EOF
 OLLAMA ZERO-COST CONFIG OK
 OpenMAIC path: $TARGET
 Model: $MODEL_FULL
-Tool calling: PASS
+Tool calling: PASS (non-empty get_status call)
 Cloud API keys in this lab env: DISABLED
 Per-call API cost: 0
 

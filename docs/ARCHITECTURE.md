@@ -1,4 +1,4 @@
-# MAIC Lab architecture v0.1
+# MAIC Lab architecture v0.2
 
 ## Principle
 
@@ -13,6 +13,7 @@ CURRENT FORMALIFE SOURCE OF TRUTH
             |
             v
      bounded Source Pack
+   (scoped fact-by-fact)
             |
             v
  Formalife instructional Skill
@@ -37,8 +38,10 @@ CURRENT FORMALIFE SOURCE OF TRUTH
  HOLD / HUMAN REVIEW
             |
             v
- renderer/editor prototype
-       (later step)
+ internal renderer preview
+            |
+            v
+ editor only if preview proves useful
 ```
 
 ## Component decisions
@@ -59,23 +62,27 @@ Why: its AI boundary is provider-neutral; Formalife can control what source mate
 
 Pinned initially: `0.3.11`.
 
+Prototype 001 now proves the internal path `Source Pack -> scoped model seam -> content/actions -> Scene -> Envelope -> Gate` with seven scenes and an inspectable CI artifact.
+
 Important: generation output is never equivalent to approved content.
 
-### 3. `@openmaic/renderer` — DEFER UNTIL CONTRACT/GATE PASS
+### 3. `@openmaic/renderer` — UNBLOCKED FOR INTERNAL PREVIEW
 
 Candidate role: internal preview/runtime for accepted DSL documents.
 
 Current upstream package observed during lab setup: `0.1.11`.
 
-Reason for defer: UI is not the first uncertainty. We first need to prove that Formalife can generate, trace and reject documents reliably.
+Reason to proceed: the contract/gate/generation path has passed. The next uncertainty is experiential: whether the generated document is materially better for recognition/decision practice than a passive sequence.
 
-### 4. `@openmaic/editor` — DEFER UNTIL CONTRACT/GATE PASS
+Boundary: renderer work remains internal-only. Do not add authentication, learner accounts, production hosting or customer data.
+
+### 4. `@openmaic/editor` — STILL DEFERRED
 
 Candidate role: internal authoring/revision surface.
 
 Current upstream package observed during lab setup: `0.0.9`.
 
-Reason for defer: avoid building a Course Studio before the underlying document and review workflow proves useful.
+Reason for defer: do not build a Course Studio until a rendered learning experience proves useful enough to justify authoring infrastructure.
 
 ### 5. Full OpenMAIC application — DO NOT ADOPT
 
@@ -89,7 +96,9 @@ The proprietary layer begins where OpenMAIC's generic educational primitives sto
 
 A bounded set of source references and approved facts for one experiment.
 
-The model receives only what is necessary for the current generation task. Missing sensitive information is not completed from memory.
+For sensitive generation, each scene receives only the fact IDs explicitly assigned to that scene. A fact being approved elsewhere in the same Source Pack does not automatically make it available to every generation task.
+
+Missing sensitive information is not completed from memory.
 
 ### B. Instructional Skill
 
@@ -103,9 +112,11 @@ Wraps the OpenMAIC document with metadata OpenMAIC does not own:
 
 - lab schema version;
 - source registry;
-- scene → source mapping;
+- scene -> source mapping;
 - review state;
 - explicit internal-only release scope.
+
+Prototype generation also retains a scene -> fact-ID map in the experiment artifact for more granular auditability.
 
 ### D. Deterministic Gate
 
@@ -125,9 +136,11 @@ It does **not** claim to verify clinical correctness.
 
 Sensitive meaning is reviewed outside the AI's authority. The repository may record that review happened; it does not create professional approval by itself.
 
+The final Formalife book may be used as a professionally validated clinical source for this lab, but generated scenes remain drafts until separately reviewed for the intended use.
+
 ## Data boundary
 
-v0 must use synthetic or editorial content only.
+v0 may use synthetic/editorial fixtures and bounded, explicitly authorized paraphrases from professionally validated Formalife source material.
 
 Do not store:
 
@@ -137,6 +150,7 @@ Do not store:
 - payment data;
 - production credentials;
 - API keys or secrets;
+- private source documents copied wholesale;
 - unpublished sensitive information that should not live in a public repository.
 
 Secrets, when later needed for local generation, belong in environment variables ignored by Git.
@@ -145,10 +159,10 @@ Secrets, when later needed for local generation, belong in environment variables
 
 This repository is intentionally public for development collaboration. Therefore:
 
-- Source Pack examples committed here must be safe for public disclosure.
+- Source Pack examples committed here must be safe for public disclosure;
 - private Formalife KB documents must not be copied wholesale into the repo;
 - use stable source IDs/references rather than secrets or private URLs;
-- sensitive prototype content should remain local until explicitly cleared for repository storage.
+- only bounded source paraphrases explicitly authorized for the experiment may be committed.
 
 ## Version discipline
 
@@ -156,8 +170,14 @@ OpenMAIC package versions are pinned during an experiment. Upgrade only when the
 
 The Formalife envelope has its own schema version independent of OpenMAIC's DSL version so the two can evolve separately.
 
+## Integration findings from Prototype 001
+
+1. OpenMAIC's content/action/build primitives work as a standalone package pipeline under the Formalife Source Pack boundary.
+2. Action prompts use a structured `type: text` / `type: action` response contract. Empty action output triggers upstream fallbacks that may not respect the requested language; the Formalife recorded-provider test therefore returns explicit grounded action text.
+3. OpenMAIC post-processing currently injects jsDelivr KaTeX assets into interactive HTML even when the prototype itself does not require mathematics. Treat third-party runtime dependencies as a renderer-stage issue: inventory them and decide whether to strip or self-host before any public/customer-facing runtime.
+
 ## Next technical checkpoint
 
-Build and test the Formalife envelope + deterministic gate around `@openmaic/dsl`.
+Add `@openmaic/renderer` only for an internal preview of Prototype 001.
 
-Only after PASS add renderer/editor and construct the first 5–7 scene interactive prototype.
+Success criterion: a human can run the seven-scene lesson, make the decisions in the interactive scenes, see feedback/reassessment, and compare the experience with a passive slide/video baseline. Do not add the editor, persistence, authentication or production hosting until that experiential test produces evidence worth preserving.

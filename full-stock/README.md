@@ -80,23 +80,42 @@ Default OpenMAIC target on macOS:
 
 The bootstrap checks out the exact upstream pin and appends the non-secret lab overlay to `.env.local`.
 
-### Manual secret gate
+### Local provider gate
 
-Before launch, edit:
+A live full-product run requires a server-side LLM provider. Credentials stay **only** in the local OpenMAIC `.env.local`; never put them in `maic-lab`, Drive, commits, issues, screenshots, chat messages, or reusable prompts.
 
-```text
-~/Downloads/OpenMAIC-full-stock/.env.local
+For OpenAI, use the local helper:
+
+```bash
+bash full-stock/configure-openai.sh
 ```
 
-Configure at least one real **server-side LLM provider** and an explicit `MODEL_ROUTES` entry for `maic-agent-driver`.
+It:
 
-Do not put provider keys in `maic-lab`, commits, issues, screenshots, or reusable prompts.
+- asks for the model ID (default: `gpt-5.6-sol`);
+- reads the API key with hidden terminal input;
+- writes `OPENAI_API_KEY`, `DEFAULT_MODEL` and the mandatory `maic-agent-driver` route only into `~/Downloads/OpenMAIC-full-stock/.env.local`;
+- routes the agent driver through `openai-responses`;
+- sets `.env.local` permissions to `600`;
+- never commits or prints the key.
 
-Then start the stock full stack:
+You may enter another valid OpenAI model ID instead of the default. Other providers can be configured manually following the pinned upstream documentation; do not guess their driver route.
+
+**Spend gate:** configuration is free, but do not start a paid provider call until the Formalife owner has explicitly approved a budget/cap for the experiment.
+
+### Launch after provider + spend approval
 
 ```bash
 bash full-stock/start.sh
 ```
+
+The launcher fails closed if:
+
+- the OpenMAIC checkout is not exactly on `UPSTREAM_PIN`;
+- upstream source files have local modifications;
+- `.env.local` is missing;
+- `maic-agent-driver` is not configured;
+- no supported server-side LLM provider is configured.
 
 Open:
 

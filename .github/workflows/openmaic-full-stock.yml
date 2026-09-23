@@ -37,6 +37,9 @@ jobs:
       - name: Checkout MAIC Lab
         uses: actions/checkout@v4
 
+      - name: Check full-stock shell helpers
+        run: bash -n full-stock/bootstrap.sh full-stock/configure-openai.sh full-stock/start.sh
+
       - name: Setup Node 22.19
         uses: actions/setup-node@v4
         with:
@@ -73,7 +76,9 @@ jobs:
             tests/generation/task-engine-outline-route.test.ts \
             packages/@openmaic/generation/test/procedural-skill-routing.test.ts \
             tests/pbl/v2/planner.test.ts \
-            tests/action/widget-actions.test.ts
+            tests/action/widget-actions.test.ts \
+            tests/ai/model-aliases.test.ts \
+            tests/ai/openai-provider.test.ts
 
       - name: Build stock OpenMAIC with lab feature flags
         working-directory: upstream-openmaic
@@ -94,10 +99,11 @@ jobs:
             echo "courseware_reference=true"
             echo "vocational_task_engine=true"
             echo "pptx_import=true"
+            echo "openai_gpt_5_6_sol_path_tested=true"
             echo "package_playback_renderer=false"
             echo "package_editor_renderer=false"
             echo "video_export=false"
-            echo "provider_live_test=NOT_RUN_NO_SECRET"
+            echo "provider_live_test=NOT_RUN_NO_SECRET_OR_SPEND"
           } > full-stock-ci/manifest.txt
 
       - name: Upload verification manifest

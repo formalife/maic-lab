@@ -57,6 +57,26 @@ if ! command -v corepack >/dev/null 2>&1; then
   exit 1
 fi
 
+# Homebrew/managed Node installs can expose `corepack` without allowing Corepack
+# to write package-manager shims next to the Node binary. Create the pnpm shim in
+# a user-writable directory instead and prepend it to PATH. This also makes pnpm
+# available to OpenMAIC lifecycle scripts invoked by `pnpm install`.
+COREPACK_BIN="$HOME/.cache/formalife-maic-corepack-bin"
+mkdir -p "$COREPACK_BIN"
+corepack enable --install-directory "$COREPACK_BIN" >/dev/null
+export PATH="$COREPACK_BIN:$PATH"
+corepack prepare pnpm@10.28.0 --activate >/dev/null
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "ERROR: Corepack non è riuscito a rendere pnpm disponibile nel PATH." >&2
+  exit 1
+fi
+
+if [[ "$(pnpm --version)" != "10.28.0" ]]; then
+  echo "ERROR: versione pnpm inattesa: $(pnpm --version); attesa 10.28.0." >&2
+  exit 1
+fi
+
 if ! curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
   echo "ERROR: Ollama non raggiungibile su http://127.0.0.1:11434." >&2
   exit 2
@@ -100,9 +120,6 @@ if ! docker exec "$PG_CONTAINER" pg_isready -U openmaic -d openmaic >/dev/null 2
   exit 2
 fi
 
-corepack enable >/dev/null 2>&1 || true
-corepack prepare pnpm@10.28.0 --activate >/dev/null
-
 if [[ ! -d node_modules ]]; then
   echo "Installing stock OpenMAIC dependencies on macOS host (one-time)..."
   NODE_OPTIONS=--max-old-space-size=1024 pnpm install --frozen-lockfile
@@ -133,6 +150,7 @@ Starting OpenMAIC FULL-STOCK in upstream dev mode...
 - Next.js: macOS host / pnpm dev (no production Docker build)
 - PostgreSQL: Docker only, localhost:${PG_PORT}
 - Ollama: localhost:11434 / $LOCAL_MODEL / API cost 0
+- pnpm: $(pnpm --version) via Corepack user-local shim
 - Pro Workbench + MAIC Editor + Pi chat + Courseware references + Vocational: ON
 
 Stop the app with Ctrl-C. PostgreSQL data remains in the Docker volume.

@@ -37,6 +37,9 @@ jobs:
       - name: Checkout MAIC Lab
         uses: actions/checkout@v4
 
+      - name: Check full-stock shell helpers
+        run: bash -n full-stock/bootstrap.sh full-stock/configure-openai.sh full-stock/start.sh
+
       - name: Setup Node 22.19
         uses: actions/setup-node@v4
         with:

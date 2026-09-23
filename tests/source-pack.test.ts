@@ -8,6 +8,7 @@ function validPack(): Record<string, any> {
     id: 'pack-1',
     title: 'Synthetic approved fixture',
     releaseScope: 'internal-only',
+    contentClass: 'general',
     sources: [
       {
         id: 'source-1',
@@ -20,13 +21,14 @@ function validPack(): Record<string, any> {
         id: 'fact-1',
         text: 'A learner should reassess when a scenario variable changes.',
         sourceIds: ['source-1'],
+        locator: 'synthetic fixture',
       },
     ],
   };
 }
 
 describe('Source Pack', () => {
-  it('passes a bounded, human-reviewed internal pack', () => {
+  it('passes a bounded, human-reviewed general pack', () => {
     expect(validateSourcePack(validPack())).toEqual({ pass: true, issues: [] });
   });
 
@@ -42,7 +44,38 @@ describe('Source Pack', () => {
     }
   });
 
-  it('injects the approved facts into OpenMAIC AI calls', async () => {
+  it('requires professional validation for sensitive clinical packs', () => {
+    const pack = validPack();
+    pack.contentClass = 'sensitive-clinical';
+
+    const result = validateSourcePack(pack);
+
+    expect(result.pass).toBe(false);
+    if (!result.pass) {
+      expect(
+        result.issues.some((issue) =>
+          issue.message.includes('require professionally-validated sources'),
+        ),
+      ).toBe(true);
+    }
+
+    pack.sources[0].reviewStatus = 'professionally-validated';
+    expect(validateSourcePack(pack)).toEqual({ pass: true, issues: [] });
+  });
+
+  it('requires a fact-level locator for traceability', () => {
+    const pack = validPack();
+    delete pack.facts[0].locator;
+
+    const result = validateSourcePack(pack);
+
+    expect(result.pass).toBe(false);
+    if (!result.pass) {
+      expect(result.issues.some((issue) => issue.path === '/facts/0/locator')).toBe(true);
+    }
+  });
+
+  it('injects approved facts and locators into OpenMAIC AI calls', async () => {
     let capturedSystem = '';
     let capturedUser = '';
 
@@ -57,7 +90,9 @@ describe('Source Pack', () => {
 
     expect(output).toBe('{"ok":true}');
     expect(capturedSystem).toContain('FORMALIFE SOURCE BOUNDARY — MANDATORY');
+    expect(capturedSystem).toContain('Content class: general');
     expect(capturedSystem).toContain('[fact-1] A learner should reassess');
+    expect(capturedSystem).toContain('locator: synthetic fixture');
     expect(capturedSystem).toContain('HOLD / NEED PROFESSIONAL REVIEW');
     expect(capturedSystem).toContain('OPENMAIC SYSTEM');
     expect(capturedUser).toBe('OPENMAIC USER');
@@ -69,6 +104,6 @@ describe('Source Pack', () => {
 
     expect(() =>
       makeSourceBoundAICall(async () => 'unused', pack),
-    ).toThrow(/generation remains HOLD/);
+    ).toThrow(/generation is blocked/);
   });
 });

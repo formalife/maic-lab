@@ -38,7 +38,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check full-stock shell helpers
-        run: bash -n full-stock/bootstrap.sh full-stock/configure-openai.sh full-stock/start.sh
+        run: bash -n full-stock/bootstrap.sh full-stock/configure-openai.sh full-stock/configure-ollama.sh full-stock/start.sh
+
+      - name: Verify zero-cost helper invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'FORMALIFE_ZERO_COST_MODE=1' full-stock/configure-ollama.sh
+          grep -Fq 'OLLAMA_BASE_URL=http://host.docker.internal:11434/v1' full-stock/configure-ollama.sh
+          grep -Fq '"api":"openai-completions"' full-stock/configure-ollama.sh
+          grep -Fq 'Cloud API keys in this lab env: DISABLED' full-stock/configure-ollama.sh
+          grep -Fq 'FORMALIFE_ZERO_COST_MODE=1' full-stock/start.sh
 
       - name: Setup Node 22.19
         uses: actions/setup-node@v4
@@ -77,6 +87,9 @@ jobs:
             packages/@openmaic/generation/test/procedural-skill-routing.test.ts \
             tests/pbl/v2/planner.test.ts \
             tests/action/widget-actions.test.ts \
+            tests/server/config-validation.test.ts \
+            tests/server/model-routes.test.ts \
+            tests/server/resolve-model.test.ts \
             tests/ai/model-aliases.test.ts \
             tests/ai/openai-provider.test.ts
 
@@ -99,11 +112,14 @@ jobs:
             echo "courseware_reference=true"
             echo "vocational_task_engine=true"
             echo "pptx_import=true"
-            echo "openai_gpt_5_6_sol_path_tested=true"
+            echo "ollama_provider_config_tests=true"
+            echo "ollama_resolve_model_tests=true"
+            echo "zero_cost_helper_static_guards=true"
+            echo "openai_gpt_5_6_sol_optional_path_tested=true"
             echo "package_playback_renderer=false"
             echo "package_editor_renderer=false"
             echo "video_export=false"
-            echo "provider_live_test=NOT_RUN_NO_SECRET_OR_SPEND"
+            echo "provider_live_test=NOT_RUN_NO_LOCAL_MODEL_ON_CI"
           } > full-stock-ci/manifest.txt
 
       - name: Upload verification manifest

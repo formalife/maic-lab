@@ -44,16 +44,60 @@ fi
 if ! grep -Eq '^MODEL_ROUTES=.*maic-agent-driver' .env.local; then
   cat >&2 <<'EOF'
 ERROR: MODEL_ROUTES per maic-agent-driver non configurato in .env.local.
-Per OpenAI usa full-stock/configure-openai.sh dal repository maic-lab.
+Per il percorso gratuito usa full-stock/configure-ollama.sh dal repository maic-lab.
 EOF
   exit 2
 fi
 
-# Accept either a cloud API key or a configured local model endpoint. This is a
-# preflight only; OpenMAIC remains the authority on provider validity at runtime.
-if ! grep -Eq '^(OPENAI|AZURE_OPENAI|ANTHROPIC|GOOGLE|DEEPSEEK|QWEN|KIMI|MINIMAX|GLM|SILICONFLOW|DOUBAO|OPENROUTER|GROK|TENCENT|TENCENT_HUNYUAN|XIAOMI|MIMO)_API_KEY=.+$|^(OLLAMA|LEMONADE)_BASE_URL=.+$' .env.local; then
-  echo "ERROR: nessun provider LLM server-side configurato in .env.local." >&2
-  exit 2
+ZERO_COST_MODE=0
+if grep -Eq '^FORMALIFE_ZERO_COST_MODE=1$' .env.local; then
+  ZERO_COST_MODE=1
+fi
+
+CLOUD_KEY_RE='^(OPENAI|AZURE_OPENAI|ANTHROPIC|GOOGLE|DEEPSEEK|QWEN|KIMI|MINIMAX|GLM|SILICONFLOW|DOUBAO|OPENROUTER|GROK|TENCENT|TENCENT_HUNYUAN|XIAOMI|MIMO)_API_KEY=.+'
+
+if (( ZERO_COST_MODE == 1 )); then
+  # Zero-cost means zero paid-provider escape hatches in this dedicated lab env.
+  if grep -Eq "$CLOUD_KEY_RE" .env.local; then
+    echo "ERROR: FORMALIFE_ZERO_COST_MODE=1 ma .env.local contiene ancora una cloud API key attiva." >&2
+    echo "Riesegui full-stock/configure-ollama.sh per disabilitare le chiavi cloud in questo lab." >&2
+    exit 2
+  fi
+
+  if ! grep -Eq '^OLLAMA_BASE_URL=.+$' .env.local || ! grep -Eq '^OLLAMA_MODELS=.+$' .env.local; then
+    echo "ERROR: zero-cost mode richiede OLLAMA_BASE_URL e OLLAMA_MODELS." >&2
+    exit 2
+  fi
+
+  if ! grep -Eq '^DEFAULT_MODEL=ollama:.+$' .env.local; then
+    echo "ERROR: zero-cost mode richiede DEFAULT_MODEL=ollama:<model>." >&2
+    exit 2
+  fi
+
+  if ! grep -Eq '^MODEL_ROUTES=.*"maic-agent-driver".*"model":"ollama:.*".*"api":"openai-completions"' .env.local; then
+    echo "ERROR: maic-agent-driver non è vincolato a Ollama/openai-completions." >&2
+    exit 2
+  fi
+
+  if ! command -v curl >/dev/null 2>&1 || ! curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+    echo "ERROR: Ollama locale non è raggiungibile su http://127.0.0.1:11434." >&2
+    echo "Avvia Ollama e riprova." >&2
+    exit 2
+  fi
+
+  LOCAL_MODEL="$(sed -n 's/^OLLAMA_MODELS=//p' .env.local | tail -n 1 | cut -d, -f1)"
+  if command -v ollama >/dev/null 2>&1 && ! ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -Fxq "$LOCAL_MODEL"; then
+    echo "ERROR: modello Ollama richiesto non installato: $LOCAL_MODEL" >&2
+    echo "Riesegui full-stock/configure-ollama.sh." >&2
+    exit 2
+  fi
+else
+  # Non-zero-cost mode remains available for explicit future experiments, but
+  # it is not the current Formalife path.
+  if ! grep -Eq "$CLOUD_KEY_RE|^(OLLAMA|LEMONADE)_BASE_URL=.+$" .env.local; then
+    echo "ERROR: nessun provider LLM server-side configurato in .env.local." >&2
+    exit 2
+  fi
 fi
 
 # NEXT_PUBLIC_* values are build-time inputs in OpenMAIC Docker Compose.
@@ -69,11 +113,18 @@ export NEXT_PUBLIC_MAIC_PLAYBACK_RENDERER_ENABLED=false
 export NEXT_PUBLIC_MAIC_EDITOR_RENDERER_ENABLED=false
 export NEXT_PUBLIC_ENABLE_VIDEO_EXPORT=false
 
+if (( ZERO_COST_MODE == 1 )); then
+  COST_LINE="- provider: Ollama locale / API cost: 0"
+else
+  COST_LINE="- provider: configured external/local provider"
+fi
+
 cat <<EOF
 Starting OpenMAIC FULL-STOCK lab...
 - upstream pin: $PIN
 - app: http://localhost:3000
 - PostgreSQL: server-persistence profile
+$COST_LINE
 - Pro Workbench: ON
 - MAIC Editor: ON
 - Pi chat: ON

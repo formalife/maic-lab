@@ -58,13 +58,12 @@ BOOTSTRAP OK
 Upstream pin: $PIN
 OpenMAIC path: $TARGET
 
-Prossimo gate manuale (segreto):
-  1. apri $TARGET/.env.local
-  2. configura almeno un provider LLM server-side
-  3. configura MODEL_ROUTES per maic-agent-driver come richiesto da OpenMAIC
-  4. poi esegui:
+Percorso Formalife corrente: ZERO COST / LLM LOCALE.
+Prossimo step:
 
-     bash "$LAB_ROOT/full-stock/start.sh" "$TARGET"
+  bash "$LAB_ROOT/full-stock/configure-ollama.sh" "$TARGET"
 
-Nessuna chiave è stata letta, creata o committata.
+L'helper installa/avvia Ollama se possibile, seleziona un Qwen3 adatto alla RAM,
+verifica tool calling localmente e vincola OpenMAIC al provider locale.
+Nessuna API key a pagamento è necessaria.
 EOF

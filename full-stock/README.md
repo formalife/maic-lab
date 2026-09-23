@@ -10,6 +10,20 @@ The question is deliberately narrower than product adoption:
 
 This is an internal, non-production Discovery Lane experiment. It does not change Formalife offers, WordPress, checkout, customer data, or production infrastructure.
 
+## Current provider decision: ZERO COST
+
+The current Formalife control experiment uses **Ollama locally on the owner's Apple Silicon Mac**.
+
+Why:
+
+- OpenMAIC natively supports Ollama as a keyless local provider;
+- Ollama exposes an OpenAI-compatible endpoint with tool calling;
+- Qwen3 supports tools and gives us useful local model sizes;
+- there is no per-call API charge;
+- all major OpenMAIC model stages are pinned to the local provider so the lab cannot silently fall back to a paid API.
+
+This is a **quality-ceiling experiment under a zero-cost constraint**, not a claim that a small local model equals GPT-5.6 Sol. If local-model quality becomes the bottleneck, record that as evidence rather than paying to hide it.
+
 ## Upstream pin
 
 The experiment is pinned by `UPSTREAM_PIN` so results are reproducible. Do not silently advance the pin during a comparison run.
@@ -64,12 +78,14 @@ Use the final professionally validated Formalife book as the source material whe
 
 Generated clinical output remains experimental/internal until separately authorized. The point of this run is to evaluate OpenMAIC, not to publish new Formalife clinical material.
 
-## Setup
+## Setup — zero-cost path
 
 From a local clone of `formalife/maic-lab`:
 
 ```bash
 bash full-stock/bootstrap.sh
+bash full-stock/configure-ollama.sh
+bash full-stock/start.sh
 ```
 
 Default OpenMAIC target on macOS:
@@ -78,50 +94,57 @@ Default OpenMAIC target on macOS:
 ~/Downloads/OpenMAIC-full-stock
 ```
 
-The bootstrap checks out the exact upstream pin and appends the non-secret lab overlay to `.env.local`.
+### What `configure-ollama.sh` does
 
-### Local provider gate
-
-A live full-product run requires a server-side LLM provider. Credentials stay **only** in the local OpenMAIC `.env.local`; never put them in `maic-lab`, Drive, commits, issues, screenshots, chat messages, or reusable prompts.
-
-For OpenAI, use the local helper:
-
-```bash
-bash full-stock/configure-openai.sh
-```
+The helper is intentionally fail-closed and Apple-Silicon specific for this experiment.
 
 It:
 
-- asks for the model ID (default: `gpt-5.6-sol`);
-- reads the API key with hidden terminal input;
-- writes `OPENAI_API_KEY`, `DEFAULT_MODEL` and the mandatory `maic-agent-driver` route only into `~/Downloads/OpenMAIC-full-stock/.env.local`;
-- routes the agent driver through `openai-responses`;
-- sets `.env.local` permissions to `600`;
-- never commits or prints the key.
+1. installs Ollama via Homebrew if it is missing and Homebrew is available;
+2. starts the local Ollama service when needed;
+3. detects unified memory;
+4. selects a default local model:
+   - 24 GB+ → `qwen3:14b`
+   - 12–23 GB → `qwen3:8b`
+   - below 12 GB → `qwen3:4b`;
+5. allows an explicit override through `OPENMAIC_LOCAL_MODEL`;
+6. pulls the model locally;
+7. verifies **OpenAI-compatible tool calling** before touching OpenMAIC config;
+8. removes active cloud-provider API keys from this dedicated lab `.env.local`;
+9. sets `FORMALIFE_ZERO_COST_MODE=1`;
+10. routes all major model stages to `ollama:<model>`;
+11. routes the mandatory `maic-agent-driver` through `openai-completions` with a 32k context pin;
+12. sets `.env.local` permissions to `600`.
 
-You may enter another valid OpenAI model ID instead of the default. Other providers can be configured manually following the pinned upstream documentation; do not guess their driver route.
+OpenMAIC runs inside Docker while Ollama runs on the host Mac, so the lab uses:
 
-**Spend gate:** configuration is free, but do not start a paid provider call until the Formalife owner has explicitly approved a budget/cap for the experiment.
-
-### Launch after provider + spend approval
-
-```bash
-bash full-stock/start.sh
+```text
+OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
 ```
 
-The launcher fails closed if:
+### Zero-cost launch guard
 
-- the OpenMAIC checkout is not exactly on `UPSTREAM_PIN`;
-- upstream source files have local modifications;
-- `.env.local` is missing;
-- `maic-agent-driver` is not configured;
-- no supported server-side LLM provider is configured.
+When `FORMALIFE_ZERO_COST_MODE=1`, `start.sh` refuses to launch if:
+
+- any supported cloud-provider API key is still active in the lab `.env.local`;
+- `DEFAULT_MODEL` is not an Ollama model;
+- the agent driver is not explicitly routed to Ollama with `openai-completions`;
+- Ollama is not reachable locally;
+- the required local model is not installed;
+- the OpenMAIC checkout differs from the approved upstream pin;
+- upstream source files have local modifications.
+
+This makes “zero cost” an executable constraint rather than a convention.
 
 Open:
 
 ```text
 http://localhost:3000
 ```
+
+## Optional paid path — not current
+
+`full-stock/configure-openai.sh` remains in the repository only as a reversible future alternative. It is **not** part of the current experiment and must not be used while the owner requires zero API spend.
 
 ## Why PostgreSQL is included
 

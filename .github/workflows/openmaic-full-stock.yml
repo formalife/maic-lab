@@ -1,0 +1,103 @@
+name: OpenMAIC full-stock pin
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'full-stock/**'
+      - '.github/workflows/openmaic-full-stock.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-upstream-pin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_PRO_WORKBENCH_ENABLED: 'true'
+      NEXT_PUBLIC_MAIC_EDITOR_ENABLED: 'true'
+      OPENMAIC_AGENT_RUNTIME_ENABLED: 'true'
+      DATABASE_URL: 'postgres://openmaic:openmaic-dev@127.0.0.1:5432/openmaic'
+      NEXT_PUBLIC_PI_CHAT_ENABLED: 'true'
+      NEXT_PUBLIC_COURSEWARE_REFERENCE_ENABLED: 'true'
+      OPENMAIC_ENABLE_VOCATIONAL: 'true'
+      NEXT_PUBLIC_SHOW_VOCATIONAL_TEST_UI: 'true'
+      NEXT_PUBLIC_ENABLE_PPTX_IMPORT: 'true'
+      NEXT_PUBLIC_MAIC_PLAYBACK_RENDERER_ENABLED: 'false'
+      NEXT_PUBLIC_MAIC_EDITOR_RENDERER_ENABLED: 'false'
+      NEXT_PUBLIC_ENABLE_VIDEO_EXPORT: 'false'
+
+    steps:
+      - name: Checkout MAIC Lab
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22.19
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Clone pinned OpenMAIC
+        shell: bash
+        run: |
+          set -euo pipefail
+          PIN="$(tr -d '[:space:]' < full-stock/UPSTREAM_PIN)"
+          git clone --filter=blob:none https://github.com/THU-MAIC/OpenMAIC.git upstream-openmaic
+          cd upstream-openmaic
+          git checkout --detach "$PIN"
+          test "$(git rev-parse HEAD)" = "$PIN"
+          echo "OPENMAIC_PIN=$PIN" >> "$GITHUB_ENV"
+
+      - name: Activate upstream pnpm
+        working-directory: upstream-openmaic
+        run: corepack prepare pnpm@10.28.0 --activate
+
+      - name: Install upstream dependencies
+        working-directory: upstream-openmaic
+        run: pnpm install --frozen-lockfile
+
+      - name: Run targeted full-product tests
+        working-directory: upstream-openmaic
+        run: |
+          pnpm exec vitest run \
+            tests/config/feature-flags.test.ts \
+            tests/workbench/entry-gate.test.ts \
+            tests/generation/task-engine-outline-route.test.ts \
+            packages/@openmaic/generation/test/procedural-skill-routing.test.ts \
+            tests/pbl/v2/planner.test.ts \
+            tests/action/widget-actions.test.ts
+
+      - name: Build stock OpenMAIC with lab feature flags
+        working-directory: upstream-openmaic
+        run: pnpm build
+
+      - name: Write verification manifest
+        shell: bash
+        run: |
+          mkdir -p full-stock-ci
+          {
+            echo "OpenMAIC full-stock verification"
+            echo "upstream_sha=$OPENMAIC_PIN"
+            echo "node=$(node --version)"
+            echo "pnpm=$(pnpm --version)"
+            echo "pro_workbench=true"
+            echo "maic_editor=true"
+            echo "pi_chat=true"
+            echo "courseware_reference=true"
+            echo "vocational_task_engine=true"
+            echo "pptx_import=true"
+            echo "package_playback_renderer=false"
+            echo "package_editor_renderer=false"
+            echo "video_export=false"
+            echo "provider_live_test=NOT_RUN_NO_SECRET"
+          } > full-stock-ci/manifest.txt
+
+      - name: Upload verification manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmaic-full-stock-verification
+          path: full-stock-ci/manifest.txt
+          if-no-files-found: error

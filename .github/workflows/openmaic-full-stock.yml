@@ -50,6 +50,9 @@ jobs:
           grep -Fq 'Cloud API keys in this lab env: DISABLED' full-stock/configure-ollama.sh
           grep -Fq 'FORMALIFE_ZERO_COST_MODE=1' full-stock/start.sh
           grep -Fq 'pnpm dev' full-stock/start-dev.sh
+          grep -Fq 'corepack enable --install-directory "$COREPACK_BIN"' full-stock/start-dev.sh
+          grep -Fq 'export PATH="$COREPACK_BIN:$PATH"' full-stock/start-dev.sh
+          grep -Fq 'pnpm --version' full-stock/start-dev.sh
           grep -Fq 'OLLAMA_BASE_URL="http://127.0.0.1:11434/v1"' full-stock/start-dev.sh
           grep -Fq 'DATABASE_URL="postgres://openmaic:openmaic-dev@127.0.0.1:' full-stock/start-dev.sh
 
@@ -118,7 +121,6 @@ jobs:
             echo "ollama_provider_config_tests=true"
             echo "ollama_resolve_model_tests=true"
             echo "zero_cost_helper_static_guards=true"
-            echo "host_dev_low_memory_launcher=true"
             echo "openai_gpt_5_6_sol_optional_path_tested=true"
             echo "package_playback_renderer=false"
             echo "package_editor_renderer=false"

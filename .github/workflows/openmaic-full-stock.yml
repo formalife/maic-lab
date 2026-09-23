@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check full-stock shell helpers
-        run: bash -n full-stock/bootstrap.sh full-stock/configure-openai.sh full-stock/configure-ollama.sh full-stock/start.sh full-stock/start-dev.sh
+        run: bash -n full-stock/bootstrap.sh full-stock/configure-openai.sh full-stock/configure-ollama.sh full-stock/configure-ram-safe.sh full-stock/start.sh full-stock/start-dev.sh full-stock/start-ram-safe-prebuilt.sh
 
       - name: Verify zero-cost helper invariants
         shell: bash
@@ -55,6 +55,21 @@ jobs:
           grep -Fq 'pnpm --version' full-stock/start-dev.sh
           grep -Fq 'OLLAMA_BASE_URL="http://127.0.0.1:11434/v1"' full-stock/start-dev.sh
           grep -Fq 'DATABASE_URL="postgres://openmaic:openmaic-dev@127.0.0.1:' full-stock/start-dev.sh
+
+      - name: Verify RAM-safe helper invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'OPENMAIC_LOCAL_MODEL=qwen3:1.7b' full-stock/configure-ram-safe.sh
+          grep -Fq 'driver["contextWindow"] = 8192' full-stock/configure-ram-safe.sh
+          grep -Fq 'OPENMAIC_AGENT_RUNTIME_MAX_CONCURRENT=1' full-stock/configure-ram-safe.sh
+          grep -Fq 'OLLAMA_NUM_PARALLEL=1' full-stock/start-ram-safe-prebuilt.sh
+          grep -Fq 'OLLAMA_MAX_LOADED_MODELS=1' full-stock/start-ram-safe-prebuilt.sh
+          grep -Fq 'OLLAMA_CONTEXT_LENGTH=8192' full-stock/start-ram-safe-prebuilt.sh
+          grep -Fq -- '--memory=1536m' full-stock/start-ram-safe-prebuilt.sh
+          grep -Fq -- '--memory=256m' full-stock/start-ram-safe-prebuilt.sh
+          grep -Fq 'OPENMAIC_AGENT_RUNTIME_MAX_CONCURRENT=1' full-stock/start-ram-safe-prebuilt.sh
+          grep -Fq '127.0.0.1:3000:3000' full-stock/start-ram-safe-prebuilt.sh
 
       - name: Setup Node 22.19
         uses: actions/setup-node@v4
@@ -121,7 +136,7 @@ jobs:
             echo "ollama_provider_config_tests=true"
             echo "ollama_resolve_model_tests=true"
             echo "zero_cost_helper_static_guards=true"
-            echo "openai_gpt_5_6_sol_optional_path_tested=true"
+            echo "ram_safe_helper_static_guards=true"
             echo "package_playback_renderer=false"
             echo "package_editor_renderer=false"
             echo "video_export=false"

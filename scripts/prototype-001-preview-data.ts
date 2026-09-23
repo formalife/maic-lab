@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 
 import { validateFormalifeEnvelope } from '../src/gate/validate-envelope.js';
 import { hardenInteractiveHtml } from '../src/preview/harden-interactive-html.js';
+import { buildPrototype001PassiveBaseline } from '../src/prototypes/001/passive-baseline.js';
 import { generatePrototype001 } from '../src/prototypes/001/generate.js';
 import { createPrototype001GroundedRecordedAiHarness } from '../src/prototypes/001/recorded-ai-grounded.js';
 
@@ -20,10 +21,18 @@ for (const scene of envelope.scenes) {
   }
 }
 
+const passiveBaseline = buildPrototype001PassiveBaseline();
+
 const output = {
   providerMode: 'recorded-ai-response-grounded',
   note:
     'Internal-only deterministic preview data generated through @openmaic/generation and the Formalife gate. Not customer-facing and not a substitute for supervised physical practice.',
+  experiment: {
+    versionA: 'passive-source-matched',
+    versionB: 'openmaic-decision-training',
+    evaluationDataPolicy: 'local-only-no-network',
+  },
+  passiveBaseline,
   sceneFactIds: result.sceneFactIds,
   envelope,
 };
@@ -36,5 +45,5 @@ await writeFile(
 );
 
 console.log(
-  `Prototype 001 preview data generated: ${result.envelope.scenes.length} scenes, gate PASS, interactive HTML hardened.`,
+  `Prototype 001 preview data generated: ${result.envelope.scenes.length} interactive scenes, ${passiveBaseline.length} passive blocks, gate PASS, interactive HTML hardened.`,
 );

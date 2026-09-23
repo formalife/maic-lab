@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { validateFormalifeEnvelope } from '../src/gate/validate-envelope.js';
 import { generatePrototype001 } from '../src/prototypes/001/generate.js';
 import { PROTOTYPE_001_OUTLINE } from '../src/prototypes/001/outline.js';
-import { createPrototype001RecordedAiHarness } from '../src/prototypes/001/recorded-ai.js';
+import { createPrototype001GroundedRecordedAiHarness } from '../src/prototypes/001/recorded-ai-grounded.js';
 
 describe('Prototype 001 OpenMAIC generation pipeline', () => {
   it('generates all seven scenes and passes the Formalife gate', async () => {
-    const harness = createPrototype001RecordedAiHarness();
+    const harness = createPrototype001GroundedRecordedAiHarness();
     const result = await generatePrototype001(harness.aiCall);
 
     expect(result.envelope.scenes).toHaveLength(7);
@@ -17,7 +17,7 @@ describe('Prototype 001 OpenMAIC generation pipeline', () => {
   });
 
   it('runs both OpenMAIC content and action generation for every scene', async () => {
-    const harness = createPrototype001RecordedAiHarness();
+    const harness = createPrototype001GroundedRecordedAiHarness();
     await generatePrototype001(harness.aiCall);
 
     for (const outline of PROTOTYPE_001_OUTLINE) {
@@ -29,7 +29,7 @@ describe('Prototype 001 OpenMAIC generation pipeline', () => {
   });
 
   it('limits each scene prompt to its assigned Source Pack facts', async () => {
-    const harness = createPrototype001RecordedAiHarness();
+    const harness = createPrototype001GroundedRecordedAiHarness();
     await generatePrototype001(harness.aiCall);
 
     const scenarioOneCalls = harness.calls.filter((call) => call.sceneId === 'p001-s02');
@@ -45,7 +45,7 @@ describe('Prototype 001 OpenMAIC generation pipeline', () => {
   });
 
   it('preserves fact-level provenance alongside generated scene ids', async () => {
-    const harness = createPrototype001RecordedAiHarness();
+    const harness = createPrototype001GroundedRecordedAiHarness();
     const result = await generatePrototype001(harness.aiCall);
 
     expect(result.sceneFactIds['scene-p001-s04']).toEqual([
@@ -57,7 +57,7 @@ describe('Prototype 001 OpenMAIC generation pipeline', () => {
   });
 
   it('produces real interactive HTML and quiz content through @openmaic/generation', async () => {
-    const harness = createPrototype001RecordedAiHarness();
+    const harness = createPrototype001GroundedRecordedAiHarness();
     const result = await generatePrototype001(harness.aiCall);
 
     const scenes = result.envelope.scenes as Array<Record<string, any>>;
@@ -71,5 +71,19 @@ describe('Prototype 001 OpenMAIC generation pipeline', () => {
     expect(quiz?.content?.type).toBe('quiz');
     expect(quiz?.content?.questions).toHaveLength(3);
     expect(quiz?.content?.questions[0]?.answer).toEqual(['A']);
+  });
+
+  it('uses grounded Italian playback actions instead of OpenMAIC language fallbacks', async () => {
+    const harness = createPrototype001GroundedRecordedAiHarness();
+    const result = await generatePrototype001(harness.aiCall);
+
+    const scenes = result.envelope.scenes as Array<Record<string, any>>;
+    for (const scene of scenes) {
+      expect(scene.actions.length, scene.id).toBeGreaterThan(0);
+      const speech = scene.actions.find((action: Record<string, any>) => action.type === 'speech');
+      expect(speech?.title, scene.id).toBe('Guida Formalife');
+      expect(speech?.text, scene.id).toBeTruthy();
+      expect(speech?.text, scene.id).not.toMatch(/\p{Script=Han}/u);
+    }
   });
 });

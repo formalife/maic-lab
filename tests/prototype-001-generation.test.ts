@@ -81,9 +81,13 @@ describe('Prototype 001 OpenMAIC generation pipeline', () => {
     for (const scene of scenes) {
       expect(scene.actions.length, scene.id).toBeGreaterThan(0);
       const speech = scene.actions.find((action: Record<string, any>) => action.type === 'speech');
-      expect(speech?.title, scene.id).toBe('Guida Formalife');
       expect(speech?.text, scene.id).toBeTruthy();
       expect(speech?.text, scene.id).not.toMatch(/\p{Script=Han}/u);
+
+      const outlineId = String(scene.id).replace(/^scene-/, '');
+      const outline = PROTOTYPE_001_OUTLINE.find((candidate) => candidate.id === outlineId);
+      expect(outline, scene.id).toBeTruthy();
+      expect(speech?.text, scene.id).toBe((outline?.keyPoints ?? []).join(' '));
     }
   });
 });

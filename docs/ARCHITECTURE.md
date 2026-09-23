@@ -1,4 +1,4 @@
-# MAIC Lab architecture v0.2
+# MAIC Lab architecture v0.3
 
 ## Principle
 
@@ -35,13 +35,17 @@ CURRENT FORMALIFE SOURCE OF TRUTH
  structure + traceability
             |
             v
- HOLD / HUMAN REVIEW
+ build-time runtime hardening
             |
             v
  internal renderer preview
             |
             v
- editor only if preview proves useful
+ experiential comparison
+ passive vs interactive
+            |
+            v
+ editor only if evidence justifies it
 ```
 
 ## Component decisions
@@ -62,19 +66,25 @@ Why: its AI boundary is provider-neutral; Formalife can control what source mate
 
 Pinned initially: `0.3.11`.
 
-Prototype 001 now proves the internal path `Source Pack -> scoped model seam -> content/actions -> Scene -> Envelope -> Gate` with seven scenes and an inspectable CI artifact.
+Prototype 001 proves the internal path `Source Pack -> scoped model seam -> content/actions -> Scene -> Envelope -> Gate` with seven scenes and inspectable CI artifacts.
 
 Important: generation output is never equivalent to approved content.
 
-### 3. `@openmaic/renderer` — UNBLOCKED FOR INTERNAL PREVIEW
+### 3. `@openmaic/renderer` — ADOPT FOR INTERNAL PREVIEW
 
-Candidate role: internal preview/runtime for accepted DSL documents.
+Role: read-only rendering of accepted DSL slide scenes inside the Prototype 001 evaluation surface.
 
-Current upstream package observed during lab setup: `0.1.11`.
+Pinned: `0.1.11`.
 
-Reason to proceed: the contract/gate/generation path has passed. The next uncertainty is experiential: whether the generated document is materially better for recognition/decision practice than a passive sequence.
+Implementation boundary:
 
-Boundary: renderer work remains internal-only. Do not add authentication, learner accounts, production hosting or customer data.
+- renderer is used for slide scenes only;
+- interactive scenes remain isolated in sandboxed `srcDoc` iframes;
+- quiz interaction is rendered locally from the DSL quiz content;
+- no OpenMAIC fonts CSS is imported, so the preview has no `file.maic.chat` font dependency;
+- no authentication, learner account, persistence, production hosting or customer data is added.
+
+Result: the renderer build now passes in CI and produces a static internal artifact that contains all seven scenes, narration and provenance inspection.
 
 ### 4. `@openmaic/editor` — STILL DEFERRED
 
@@ -132,7 +142,19 @@ Checks what can be checked mechanically:
 
 It does **not** claim to verify clinical correctness.
 
-### E. Professional/human review boundary
+### E. Runtime hardening
+
+Prototype 001 interactive HTML is hardened before it is bundled:
+
+- OpenMAIC-injected KaTeX `jsDelivr` assets are removed because this prototype does not use mathematics;
+- the auto-render bootstrap that depends on those assets is removed;
+- a restrictive Content Security Policy is embedded;
+- the browser still renders the scene inside an iframe with `sandbox="allow-scripts"` and no `allow-same-origin`;
+- the static preview artifact contains no `jsDelivr` URL and no `file.maic.chat` font URL.
+
+This is a prototype-specific hardening rule, not a general claim that every future OpenMAIC widget is safe to render unchanged.
+
+### F. Professional/human review boundary
 
 Sensitive meaning is reviewed outside the AI's authority. The repository may record that review happened; it does not create professional approval by itself.
 
@@ -166,7 +188,7 @@ This repository is intentionally public for development collaboration. Therefore
 
 ## Version discipline
 
-OpenMAIC package versions are pinned during an experiment. Upgrade only when there is a concrete reason, then re-run gate/type tests before accepting the change.
+OpenMAIC package versions are pinned during an experiment. Upgrade only when there is a concrete reason, then re-run gate/type/build tests before accepting the change.
 
 The Formalife envelope has its own schema version independent of OpenMAIC's DSL version so the two can evolve separately.
 
@@ -174,10 +196,34 @@ The Formalife envelope has its own schema version independent of OpenMAIC's DSL 
 
 1. OpenMAIC's content/action/build primitives work as a standalone package pipeline under the Formalife Source Pack boundary.
 2. Action prompts use a structured `type: text` / `type: action` response contract. Empty action output triggers upstream fallbacks that may not respect the requested language; the Formalife recorded-provider test therefore returns explicit grounded action text.
-3. OpenMAIC post-processing currently injects jsDelivr KaTeX assets into interactive HTML even when the prototype itself does not require mathematics. Treat third-party runtime dependencies as a renderer-stage issue: inventory them and decide whether to strip or self-host before any public/customer-facing runtime.
+3. OpenMAIC post-processing injects KaTeX CDN assets into interactive HTML even when Prototype 001 does not require mathematics. The preview now strips these at build time and adds a restrictive CSP before bundling.
+4. `@openmaic/renderer` works independently for the generated slide canvases without importing the full OpenMAIC app or its font CDN.
+5. A single internal preview can combine native OpenMAIC slide rendering with sandboxed interactive HTML and a local quiz renderer while preserving scene-level narration and fact provenance.
+
+## Current verification checkpoint
+
+The renderer-preview branch/PR must pass all of the following before merge:
+
+- dependency installation;
+- root + preview TypeScript checks;
+- all unit/integration/security tests;
+- Prototype 001 gated generation;
+- Vite production build;
+- static artifact upload;
+- artifact readback confirming all seven scene titles and provenance identifiers;
+- no `cdn.jsdelivr.net` or `file.maic.chat` URL in the final static artifact.
 
 ## Next technical checkpoint
 
-Add `@openmaic/renderer` only for an internal preview of Prototype 001.
+Do **not** add the editor next.
 
-Success criterion: a human can run the seven-scene lesson, make the decisions in the interactive scenes, see feedback/reassessment, and compare the experience with a passive slide/video baseline. Do not add the editor, persistence, authentication or production hosting until that experiential test produces evidence worth preserving.
+The next uncertainty is pedagogical rather than infrastructural: compare the same bounded material in a passive baseline versus the interactive Prototype 001 preview.
+
+Minimum evidence to collect:
+
+- can a tester correctly identify the changing decision cue after the scenario variable changes;
+- does the interactive version make the reason for the decision easier to explain than the passive baseline;
+- does the learner notice the need to reassess instead of perseverating on the first classification;
+- is the extra interaction useful enough to justify maintaining this content format.
+
+Only if that evidence is promising should the lab consider `@openmaic/editor`, live model variability, persistence or a broader content workflow.

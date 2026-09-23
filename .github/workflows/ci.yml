@@ -38,9 +38,19 @@ jobs:
       - name: Generate Prototype 001 artifact
         run: pnpm prototype:001:recorded
 
+      - name: Build Prototype 001 renderer preview
+        run: pnpm preview:build
+
       - name: Upload Prototype 001 artifact
         uses: actions/upload-artifact@v4
         with:
           name: prototype-001-recorded
           path: artifacts/prototype-001-recorded.json
+          if-no-files-found: error
+
+      - name: Upload Prototype 001 renderer preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: prototype-001-renderer-preview
+          path: preview/dist
           if-no-files-found: error

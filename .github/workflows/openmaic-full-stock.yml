@@ -6,6 +6,11 @@ on:
     paths:
       - 'full-stock/**'
       - '.github/workflows/openmaic-full-stock.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'full-stock/**'
+      - '.github/workflows/openmaic-full-stock.yml'
 
 permissions:
   contents: read

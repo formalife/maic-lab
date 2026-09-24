@@ -5,6 +5,7 @@ import { hardenInteractiveHtml } from '../src/preview/harden-interactive-html.js
 import { buildPrototype001PassiveBaseline } from '../src/prototypes/001/passive-baseline.js';
 import { generatePrototype001 } from '../src/prototypes/001/generate.js';
 import { createPrototype001GroundedRecordedAiHarness } from '../src/prototypes/001/recorded-ai-grounded.js';
+import { PROTOTYPE_001_SOURCE_PACK } from '../src/prototypes/001/source-pack.js';
 
 const harness = createPrototype001GroundedRecordedAiHarness();
 const result = await generatePrototype001(harness.aiCall);
@@ -22,6 +23,16 @@ for (const scene of envelope.scenes) {
 }
 
 const passiveBaseline = buildPrototype001PassiveBaseline();
+const factCatalog = Object.fromEntries(
+  PROTOTYPE_001_SOURCE_PACK.facts.map((fact) => [
+    fact.id,
+    {
+      text: fact.text,
+      locator: fact.locator,
+      sourceIds: fact.sourceIds,
+    },
+  ]),
+);
 
 const output = {
   providerMode: 'recorded-ai-response-grounded',
@@ -33,6 +44,7 @@ const output = {
     evaluationDataPolicy: 'local-only-no-network',
   },
   passiveBaseline,
+  factCatalog,
   sceneFactIds: result.sceneFactIds,
   envelope,
 };
@@ -45,5 +57,5 @@ await writeFile(
 );
 
 console.log(
-  `Prototype 001 preview data generated: ${result.envelope.scenes.length} interactive scenes, ${passiveBaseline.length} passive blocks, gate PASS, interactive HTML hardened.`,
+  `Prototype 001 preview data generated: ${result.envelope.scenes.length} interactive scenes, ${passiveBaseline.length} passive blocks, ${Object.keys(factCatalog).length} approved facts, gate PASS, interactive HTML hardened.`,
 );
